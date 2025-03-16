@@ -15,6 +15,7 @@ import json
 from django.views.decorators.csrf import csrf_exempt
 from .models import CarMake, CarModel  # Added imports for CarMake and CarModel
 from .populate import initiate  # Import the initiate function to populate data
+from .restapis import get_request, analyze_review_sentiments, post_review  # Import necessary methods from restapis.py
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -55,13 +56,17 @@ def registration(request):
     user = User.objects.create_user(username=username, password=password, first_name=first_name, last_name=last_name, email=email)
     return JsonResponse({"status": "User created", "user": {"username": user.username, "first_name": user.first_name, "last_name": user.last_name, "email": user.email}})
 
-# Update the `get_dealerships` view to render the index page with a list of dealerships
-def get_dealerships(request):
-    dealerships = Dealer.objects.all()  # Assuming you have a Dealer model
-    dealership_list = []
-    for dealership in dealerships:
-        dealership_list.append({"name": dealership.name, "location": dealership.location, "id": dealership.id})
-    return JsonResponse({"dealerships": dealership_list})
+# Update the `get_dealerships` render list of dealerships all by default, particular state if state is passed
+def get_dealerships(request, state="All"):
+    if state == "All":
+        endpoint = "/fetchDealers"
+    else:
+        endpoint = "/fetchDealers/" + state
+    
+    # Call the get_request function to get the dealerships
+    dealerships = get_request(endpoint)
+    
+    return JsonResponse({"status": 200, "dealers": dealerships})
 
 # Create a `get_dealer_reviews` view to render the reviews of a dealer
 def get_dealer_reviews(request, dealer_id):
@@ -76,27 +81,28 @@ def get_dealer_reviews(request, dealer_id):
         })
     return JsonResponse({"reviews": review_list})
 
-# Create a `get_dealer_details` view to render the dealer details
+# Get details of a dealer
 def get_dealer_details(request, dealer_id):
-    dealer = get_object_or_404(Dealer, pk=dealer_id)  # Assuming you have a Dealer model
-    dealer_details = {
-        "name": dealer.name,
-        "location": dealer.location,
-        "contact": dealer.contact_info,
-        "website": dealer.website,
-    }
-    return JsonResponse({"dealer": dealer_details})
+    if(dealer_id):
+        endpoint = "/fetchDealer/"+str(dealer_id)
+        dealership = get_request(endpoint)
+        return JsonResponse({"status":200,"dealer":dealership})
+    else:
+        return JsonResponse({"status":400,"message":"Bad Request"})
 
 # Create a `add_review` view to submit a review
 @csrf_exempt
 def add_review(request):
-    data = json.loads(request.body)
-    dealer_id = data['dealerId']
-    user = request.user
-    review_text = data['reviewText']
-    rating = data['rating']
-    review = Review.objects.create(dealer_id=dealer_id, user=user, review_text=review_text, rating=rating)
-    return JsonResponse({"status": "review_added", "review": {"username": user.username, "review": review_text, "rating": rating}})
+    if(request.user.is_anonymous == False):
+        data = json.loads(request.body)
+        try:
+            # Call the post_review function to send review data
+            response = post_review(data)
+            return JsonResponse({"status": 200, "message": "Review added successfully"})
+        except:
+            return JsonResponse({"status": 401, "message": "Error in posting review"})
+    else:
+        return JsonResponse({"status": 403, "message": "Unauthorized"})
 
 # New `get_cars` method to retrieve car makes and models
 def get_cars(request):

@@ -34,10 +34,24 @@ def analyze_review_sentiments(text):
 
     try:
         response = requests.get(request_url)
-        return response.json()
+        
+        # Check if the response is successful and contains the expected data
+        if response.status_code == 200:
+            sentiment_data = response.json()
+            if sentiment_data and 'sentiment' in sentiment_data:
+                return sentiment_data
+            else:
+                print(f"Sentiment data missing in response: {sentiment_data}")
+                return {"sentiment": "unknown"}  # Return a default value if sentiment is not found
+        else:
+            print(f"Error: Received {response.status_code} from sentiment analyzer")
+            return {"sentiment": "unknown"}  # Return default value in case of non-200 response
+
     except Exception as err:
         print(f"Unexpected {err=}, {type(err)=}")
         print("Network exception occurred")
+        return {"sentiment": "unknown"}  # Return a default value if the request fails
+
 
 
 def post_review(data_dict):

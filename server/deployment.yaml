@@ -22,7 +22,7 @@ spec:
       imagePullSecrets:
       - name: icr
       containers:
-      - image: us.icr.io/sn-labs-kunalmgsachd/dealership:latest
+      - image: us.icr.io/sn-labs-renceshane15/dealership:latest
         imagePullPolicy: Always
         name: dealership
         ports:
